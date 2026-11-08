@@ -334,14 +334,16 @@ func TestMarketPricingModel(t *testing.T) {
 	if !isFishRotten(now-86401, now) {
 		t.Error("86401s 应判腐败")
 	}
-	// 报价：perch g2 782g 鲜鱼 = round(0.1176/28 × 782 × 100) = 328 分
+	// 报价：perch g2 782g 鲜鱼 = round(0.1176/28 × 782 × 100 × 每日系数)
 	e := &store.KeepnetEntry{Species: "perch", Cat: 2, WeightG: 782, TS: now}
-	if got := marketPriceCents(e, now); got != 328 {
-		t.Errorf("perch g2 782g 报价 = %d want 328", got)
+	wantPerch := int64(math.Max(1, math.Round(0.1176/28.0*782*100*dailyMarketFactor("perch", now))))
+	if got := marketPriceCents(e, now); got != wantPerch {
+		t.Errorf("perch g2 782g 报价 = %d want %d", got, wantPerch)
 	}
 	// 未标定种兜底（MARKET_RATE_FALLBACK g2=0.10/28）
 	e2 := &store.KeepnetEntry{Species: "no_such_fish", Cat: 2, WeightG: 100, TS: now}
-	if got := marketPriceCents(e2, now); got != int64(mathRound(0.10/28.0*100*100)) {
+	wantFallback := int64(math.Max(1, math.Round(0.10/28.0*100*100*dailyMarketFactor("no_such_fish", now))))
+	if got := marketPriceCents(e2, now); got != wantFallback {
 		t.Errorf("未标定种兜底报价 = %d", got)
 	}
 	// g1 = g2 价 ×0.45
